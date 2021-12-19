@@ -127,7 +127,6 @@ int inode_create(inode_type n_type) {
                 /* In case of a new file, simply sets its size to 0 */
                 inode_table[inumber].n_data_blocks = 0;
                 inode_table[inumber].i_size = 0;
-                inode_table[inumber].i_data_block[0] = -1;
             }
             return inumber;
         }
@@ -154,10 +153,22 @@ int inode_delete(int inumber) {
 
     if (inode_table[inumber].i_size > 0) {
         for(int i = 0; i < inode_table[inumber].n_data_blocks; i++) {
-            if (data_block_free(inode_table[inumber].i_data_block[i]) == -1) {
-                return -1;
+            if (i < MAX_DIRECT_BLOCK) {
+                if (data_block_free(inode_table[inumber].i_data_block[i]) == -1) {
+                    return -1;
+                }
+            }
+            else {
+                int *block_to_blocks = (int *) data_block_get(inode_table[inumber].i_data_block_to_data_blocks);
+                if (block_to_blocks == NULL)
+                    return -1;
+                if (data_block_free(block_to_blocks[i-MAX_DIRECT_BLOCK]) == -1)
+                    return -1;
             }
         }
+        if (inode_table[inumber].n_data_blocks > MAX_DIRECT_BLOCK)
+            if (data_block_free(inode_table[inumber].i_data_block_to_data_blocks) == -1)
+                return -1;
     }
 
     /* TODO: handle non-empty directories (either return error, or recursively

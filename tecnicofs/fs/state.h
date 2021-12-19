@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
+#define MAX_DIRECT_BLOCK 10
+
 /*
  * Directory entry
  */
@@ -24,7 +26,7 @@ typedef struct {
     inode_type i_node_type;
     size_t i_size;
     int n_data_blocks;
-    int i_data_block[10];
+    int i_data_block[MAX_DIRECT_BLOCK];
     int i_data_block_to_data_blocks;
     /* in a real FS, more fields would exist here */
 } inode_t;
@@ -39,6 +41,7 @@ typedef struct {
     size_t of_offset;
 } open_file_entry_t;
 
+#define MAX_BLOCK_INDEX (BLOCK_SIZE / sizeof(int))
 #define MAX_DIR_ENTRIES (BLOCK_SIZE / sizeof(dir_entry_t))
 
 void state_init();
