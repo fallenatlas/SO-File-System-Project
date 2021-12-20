@@ -135,6 +135,7 @@ ssize_t tfs_write(int fhandle, void const *buffer, size_t to_write) {
     size_t remain = block_offset % BLOCK_SIZE;
     int create_new_block = 0;
 
+    block_offset = remain;
     if (remain == 0 && current_block > 0) {
         current_block--;
         block_offset = BLOCK_SIZE;
@@ -205,7 +206,7 @@ ssize_t tfs_write(int fhandle, void const *buffer, size_t to_write) {
             return -1;
         }
 
-        if (create_new_block == 1) {
+        if (create_new_block == 1 || inode->i_size == 0) {
             create_new_block = 0;
             inode->n_data_blocks++;
         }
@@ -250,6 +251,7 @@ ssize_t tfs_read(int fhandle, void *buffer, size_t len) {
         to_read = len;
     }
 
+    block_offset = remain;
     if (remain == 0 && current_block > 0) {
         current_block--;
         block_offset = BLOCK_SIZE;
