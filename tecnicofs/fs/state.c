@@ -5,22 +5,23 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <pthread.h>
 
 /* Persistent FS state  (in reality, it should be maintained in secondary
  * memory; for simplicity, this project maintains it in primary memory) */
 
 /* I-node table */
 static inode_t inode_table[INODE_TABLE_SIZE];
-static char freeinode_ts[INODE_TABLE_SIZE];
+static free_table_entry freeinode_ts[INODE_TABLE_SIZE];
 
 /* Data blocks */
 static char fs_data[BLOCK_SIZE * DATA_BLOCKS];
-static char free_blocks[DATA_BLOCKS];
+static free_table_entry free_blocks[DATA_BLOCKS];
 
 /* Volatile FS state */
 
 static open_file_entry_t open_file_table[MAX_OPEN_FILES];
-static char free_open_file_entries[MAX_OPEN_FILES];
+static free_table_entry free_open_file_entries[MAX_OPEN_FILES];
 
 static inline bool valid_inumber(int inumber) {
     return inumber >= 0 && inumber < INODE_TABLE_SIZE;
@@ -64,18 +65,28 @@ static void insert_delay() {
 /*
  * Initializes FS state
  */
-void state_init() {
+int state_init() {
     for (size_t i = 0; i < INODE_TABLE_SIZE; i++) {
-        freeinode_ts[i] = FREE;
+        freeinode_ts[i].allocation_state = FREE;
+        if (pthread_mutex_init(&freeinode_ts[i].lock, NULL) != 0) {
+            return -1;
+        }
     }
 
     for (size_t i = 0; i < DATA_BLOCKS; i++) {
-        free_blocks[i] = FREE;
+        free_blocks[i].allocation_state = FREE;
+        if (pthread_mutex_init(&free_blocks[i].lock, NULL) != 0) {
+            return -1;
+        }
     }
 
     for (size_t i = 0; i < MAX_OPEN_FILES; i++) {
-        free_open_file_entries[i] = FREE;
+        free_open_file_entries[i].allocation_state = FREE;
+        if (pthread_mutex_init(&free_open_file_entries[i].lock, NULL) != 0) {
+            return -1;
+        }
     }
+    return 0;
 }
 
 void state_destroy() { /* nothing to do */
@@ -94,11 +105,18 @@ int inode_create(inode_type n_type) {
             insert_delay(); // simulate storage access delay (to freeinode_ts)
         }
 
+        pthread_mutex_lock(&freeinode_ts[inumber].lock);
         /* Finds first free entry in i-node table */
-        if (freeinode_ts[inumber] == FREE) {
+        if (freeinode_ts[inumber].allocation_state == FREE) {
             /* Found a free entry, so takes it for the new i-node*/
-            freeinode_ts[inumber] = TAKEN;
+            freeinode_ts[inumber].allocation_state = TAKEN;
+            pthread_mutex_unlock(&freeinode_ts[inumber].lock);
             insert_delay(); // simulate storage access delay (to i-node)
+            if (pthread_rwlock_init(&inode_table[inumber].rw_lock, NULL) != 0) {
+                freeinode_ts[inumber].allocation_state = FREE;
+                return -1;
+            }
+            pthread_rwlock_wrlock(&inode_table[inumber].rw_lock);
             inode_table[inumber].i_node_type = n_type;
 
             if (n_type == T_DIRECTORY) {
@@ -106,7 +124,8 @@ int inode_create(inode_type n_type) {
                  * entries, labeled with inumber==-1) */
                 int b = data_block_alloc();
                 if (b == -1) {
-                    freeinode_ts[inumber] = FREE;
+                    freeinode_ts[inumber].allocation_state = FREE;
+                    pthread_rwlock_unlock(&inode_table[inumber].rw_lock);
                     return -1;
                 }
 
@@ -116,7 +135,8 @@ int inode_create(inode_type n_type) {
 
                 dir_entry_t *dir_entry = (dir_entry_t *)data_block_get(b);
                 if (dir_entry == NULL) {
-                    freeinode_ts[inumber] = FREE;
+                    freeinode_ts[inumber].allocation_state = FREE;
+                    pthread_rwlock_unlock(&inode_table[inumber].rw_lock);
                     return -1;
                 }
 
@@ -128,8 +148,10 @@ int inode_create(inode_type n_type) {
                 inode_table[inumber].n_data_blocks = 0;
                 inode_table[inumber].i_size = 0;
             }
+            pthread_rwlock_unlock(&inode_table[inumber].rw_lock);
             return inumber;
         }
+        pthread_mutex_unlock(&freeinode_ts[inumber].lock);
     }
     return -1;
 }
@@ -145,35 +167,44 @@ int inode_delete(int inumber) {
     insert_delay();
     insert_delay();
 
-    if (!valid_inumber(inumber) || freeinode_ts[inumber] == FREE) {
+    pthread_mutex_lock(&freeinode_ts[inumber].lock);
+    if (!valid_inumber(inumber) || freeinode_ts[inumber].allocation_state == FREE) {
+        pthread_mutex_unlock(&freeinode_ts[inumber].lock);
         return -1;
     }
 
-    freeinode_ts[inumber] = FREE;
+    freeinode_ts[inumber].allocation_state = FREE;
+    pthread_mutex_unlock(&freeinode_ts[inumber].lock);
 
+    pthread_rwlock_wrlock(&inode_table[inumber].rw_lock);
     if (inode_table[inumber].i_size > 0) {
         for(int i = 0; i < inode_table[inumber].n_data_blocks; i++) {
             if (i < MAX_DIRECT_BLOCK) {
                 if (data_block_free(inode_table[inumber].i_data_block[i]) == -1) {
+                    pthread_rwlock_unlock(&inode_table[inumber].rw_lock);
                     return -1;
                 }
             }
             else {
                 int *block_to_blocks = (int *) data_block_get(inode_table[inumber].i_data_block_to_data_blocks);
                 if (block_to_blocks == NULL)
+                    pthread_rwlock_unlock(&inode_table[inumber].rw_lock);
                     return -1;
                 if (data_block_free(block_to_blocks[i-MAX_DIRECT_BLOCK]) == -1)
+                    pthread_rwlock_unlock(&inode_table[inumber].rw_lock);
                     return -1;
             }
         }
         if (inode_table[inumber].n_data_blocks > MAX_DIRECT_BLOCK)
             if (data_block_free(inode_table[inumber].i_data_block_to_data_blocks) == -1)
+                pthread_rwlock_unlock(&inode_table[inumber].rw_lock);
                 return -1;
     }
 
     /* TODO: handle non-empty directories (either return error, or recursively
      * delete children */
-
+    pthread_rwlock_unlock(&inode_table[inumber].rw_lock);
+    pthread_rwlock_destroy(&inode_table[inumber].rw_lock);
     return 0;
 }
 
@@ -214,10 +245,12 @@ int add_dir_entry(int inumber, int sub_inumber, char const *sub_name) {
         return -1;
     }
 
+    pthread_rwlock_wrlock(&inode_table[inumber].rw_lock);
     /* Locates the block containing the directory's entries */
     dir_entry_t *dir_entry =
         (dir_entry_t *)data_block_get(inode_table[inumber].i_data_block[0]);
     if (dir_entry == NULL) {
+        pthread_rwlock_unlock(&inode_table[inumber].rw_lock);
         return -1;
     }
 
@@ -227,10 +260,11 @@ int add_dir_entry(int inumber, int sub_inumber, char const *sub_name) {
             dir_entry[i].d_inumber = sub_inumber;
             strncpy(dir_entry[i].d_name, sub_name, MAX_FILE_NAME - 1);
             dir_entry[i].d_name[MAX_FILE_NAME - 1] = 0;
+            pthread_rwlock_unlock(&inode_table[inumber].rw_lock);
             return 0;
         }
     }
-
+    pthread_rwlock_unlock(&inode_table[inumber].rw_lock);
     return -1;
 }
 
@@ -247,10 +281,12 @@ int find_in_dir(int inumber, char const *sub_name) {
         return -1;
     }
 
+    pthread_rwlock_rdlock(&inode_table[inumber].rw_lock);
     /* Locates the block containing the directory's entries */
     dir_entry_t *dir_entry =
         (dir_entry_t *)data_block_get(inode_table[inumber].i_data_block[0]);
     if (dir_entry == NULL) {
+        pthread_rwlock_unlock(&inode_table[inumber].rw_lock);
         return -1;
     }
 
@@ -259,9 +295,10 @@ int find_in_dir(int inumber, char const *sub_name) {
     for (int i = 0; i < MAX_DIR_ENTRIES; i++)
         if ((dir_entry[i].d_inumber != -1) &&
             (strncmp(dir_entry[i].d_name, sub_name, MAX_FILE_NAME) == 0)) {
+            pthread_rwlock_unlock(&inode_table[inumber].rw_lock);
             return dir_entry[i].d_inumber;
         }
-
+    pthread_rwlock_unlock(&inode_table[inumber].rw_lock);
     return -1;
 }
 
@@ -275,10 +312,13 @@ int data_block_alloc() {
             insert_delay(); // simulate storage access delay to free_blocks
         }
 
-        if (free_blocks[i] == FREE) {
-            free_blocks[i] = TAKEN;
+        pthread_mutex_lock(&free_blocks[i].lock);
+        if (free_blocks[i].allocation_state == FREE) {
+            free_blocks[i].allocation_state = TAKEN;
+            pthread_mutex_unlock(&free_blocks[i].lock);
             return i;
         }
+        pthread_mutex_unlock(&free_blocks[i].lock);
     }
     return -1;
 }
@@ -294,7 +334,8 @@ int data_block_free(int block_number) {
     }
 
     insert_delay(); // simulate storage access delay to free_blocks
-    free_blocks[block_number] = FREE;
+    // attention, look into this later again
+    free_blocks[block_number].allocation_state = FREE;
     return 0;
 }
 
@@ -320,12 +361,16 @@ void *data_block_get(int block_number) {
  */
 int add_to_open_file_table(int inumber, size_t offset) {
     for (int i = 0; i < MAX_OPEN_FILES; i++) {
-        if (free_open_file_entries[i] == FREE) {
-            free_open_file_entries[i] = TAKEN;
+        pthread_mutex_lock(&free_open_file_entries[i].lock);
+        if (free_open_file_entries[i].allocation_state == FREE) {
+            free_open_file_entries[i].allocation_state = TAKEN;
+            pthread_mutex_unlock(&free_open_file_entries[i].lock);
             open_file_table[i].of_inumber = inumber;
             open_file_table[i].of_offset = offset;
+            pthread_rwlock_init(&open_file_table[i].rw_lock, NULL);
             return i;
         }
+        pthread_mutex_unlock(&free_open_file_entries[i].lock);
     }
     return -1;
 }
@@ -336,11 +381,15 @@ int add_to_open_file_table(int inumber, size_t offset) {
  * Returns 0 is success, -1 otherwise
  */
 int remove_from_open_file_table(int fhandle) {
+    pthread_mutex_lock(&free_open_file_entries[fhandle].lock);
     if (!valid_file_handle(fhandle) ||
-        free_open_file_entries[fhandle] != TAKEN) {
+        free_open_file_entries[fhandle].allocation_state != TAKEN) {
+        pthread_mutex_unlock(&free_open_file_entries[fhandle].lock);
         return -1;
     }
-    free_open_file_entries[fhandle] = FREE;
+    free_open_file_entries[fhandle].allocation_state = FREE;
+    pthread_rwlock_destroy(&open_file_table[fhandle].rw_lock);
+    pthread_mutex_unlock(&free_open_file_entries[fhandle].lock);
     return 0;
 }
 

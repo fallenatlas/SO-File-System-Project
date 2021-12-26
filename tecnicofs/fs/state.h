@@ -28,6 +28,7 @@ typedef struct {
     int n_data_blocks;
     int i_data_block[MAX_DIRECT_BLOCK];
     int i_data_block_to_data_blocks;
+    pthread_rwlock_t rw_lock;
     /* in a real FS, more fields would exist here */
 } inode_t;
 
@@ -39,12 +40,18 @@ typedef enum { FREE = 0, TAKEN = 1 } allocation_state_t;
 typedef struct {
     int of_inumber;
     size_t of_offset;
+    pthread_rwlock_t rw_lock;
 } open_file_entry_t;
+
+typedef struct {
+    char allocation_state;
+    pthread_mutex_t lock;
+} free_table_entry;
 
 #define MAX_BLOCK_INDEX (BLOCK_SIZE / sizeof(int))
 #define MAX_DIR_ENTRIES (BLOCK_SIZE / sizeof(dir_entry_t))
 
-void state_init();
+int state_init();
 void state_destroy();
 
 int inode_create(inode_type n_type);
