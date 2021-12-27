@@ -1,8 +1,10 @@
 #include "operations.h"
+
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 
 int tfs_init() {
     state_init();
@@ -180,9 +182,10 @@ ssize_t tfs_write(int fhandle, void const *buffer, size_t to_write) {
                 }
                 else {
                     n_block++;
-                    if (n_block > MAX_BLOCK_INDEX)
+                    if (n_block > MAX_BLOCK_INDEX) {
                         pthread_rwlock_unlock(&inode->rw_lock);
                         return (ssize_t)written;
+                    }
                 }
                 int *block_to_blocks = (int *) data_block_get(inode->i_data_block_to_data_blocks);
                 if (block_to_blocks == NULL) {

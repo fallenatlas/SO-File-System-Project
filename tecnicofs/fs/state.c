@@ -187,18 +187,21 @@ int inode_delete(int inumber) {
             }
             else {
                 int *block_to_blocks = (int *) data_block_get(inode_table[inumber].i_data_block_to_data_blocks);
-                if (block_to_blocks == NULL)
+                if (block_to_blocks == NULL) {
                     pthread_rwlock_unlock(&inode_table[inumber].rw_lock);
                     return -1;
-                if (data_block_free(block_to_blocks[i-MAX_DIRECT_BLOCK]) == -1)
+                }
+                if (data_block_free(block_to_blocks[i-MAX_DIRECT_BLOCK]) == -1) {
                     pthread_rwlock_unlock(&inode_table[inumber].rw_lock);
                     return -1;
+                }
             }
         }
         if (inode_table[inumber].n_data_blocks > MAX_DIRECT_BLOCK)
-            if (data_block_free(inode_table[inumber].i_data_block_to_data_blocks) == -1)
+            if (data_block_free(inode_table[inumber].i_data_block_to_data_blocks) == -1) {
                 pthread_rwlock_unlock(&inode_table[inumber].rw_lock);
                 return -1;
+            }
     }
 
     /* TODO: handle non-empty directories (either return error, or recursively
