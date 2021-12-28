@@ -131,74 +131,66 @@ ssize_t tfs_write(int fhandle, void const *buffer, size_t to_write) {
     }
 
     pthread_rwlock_wrlock(&inode->rw_lock);
-    size_t written = 0;
+    size_t written;
     size_t to_write_now;
     size_t block_offset = file->of_offset;
-    size_t n_block = 0;
+    size_t n_ind_block = 0;
     size_t current_block = block_offset / BLOCK_SIZE;
     size_t remain = block_offset % BLOCK_SIZE;
     int create_new_block = 0;
 
+    /* Determine how many bytes to write */
+    if (to_write + file->of_offset > (BLOCK_SIZE * (MAX_DIRECT_BLOCK + MAX_DIR_ENTRIES))) {
+        to_write = (BLOCK_SIZE * (MAX_DIRECT_BLOCK + MAX_DIR_ENTRIES)) - file->of_offset;
+    }
+    written = to_write;
+
+    /* Determine the block where offset is */
     block_offset = remain;
     if (remain == 0 && current_block > 0) {
         current_block--;
         block_offset = BLOCK_SIZE;
     }
     if (current_block > MAX_DIRECT_BLOCK)
-        n_block = current_block - MAX_DIRECT_BLOCK;
-
-    /*while(block_offset > BLOCK_SIZE) {
-        block_offset -= BLOCK_SIZE;
-        current_block++;
-        if(current_block > MAX_DIRECT_BLOCK) { n_block++; }
-    }*/
+        n_ind_block = current_block - MAX_DIRECT_BLOCK;
 
     while(to_write > 0) {
-        if(block_offset == BLOCK_SIZE && current_block + 1 == inode->n_data_blocks) { create_new_block = 1; }
-
-        if (to_write > BLOCK_SIZE && create_new_block == 1) {
-            to_write_now = BLOCK_SIZE;
-            to_write -= to_write_now;
-        }
-        else if(to_write + block_offset > BLOCK_SIZE && create_new_block == 0) {
-            to_write_now = BLOCK_SIZE - block_offset;
-            to_write -= to_write_now;
-        }
-        else {
-            to_write_now = to_write;
-            to_write = 0;
-        }
-
-        if (inode->i_size == 0) {
-            /* If empty file, allocate new block */
-            inode->i_data_block[0] = data_block_alloc();
-        }
-        else if(create_new_block == 1) {
-            current_block++;
+        /* Determine if is needed to allocate new block */
+        if((block_offset == BLOCK_SIZE && current_block + 1 == inode->n_data_blocks) || (inode->i_size == 0)) {
+            create_new_block = 1;
             block_offset = 0;
+            /* Update block to write */
+            if (inode->i_size != 0)
+                current_block++;
+            if (current_block > MAX_DIRECT_BLOCK)
+                n_ind_block++;
+        }
+
+        /* Determine how many bytes can write in current block */
+        to_write_now = BLOCK_SIZE - block_offset;
+        if (to_write_now > to_write)
+            to_write_now = to_write;
+        to_write -= to_write_now;
+
+        /* Allocate new block */
+        if(create_new_block == 1) {
             if(current_block >= MAX_DIRECT_BLOCK) {
                 if(current_block == MAX_DIRECT_BLOCK) {
                     inode->i_data_block_to_data_blocks = data_block_alloc();
-                }
-                else {
-                    n_block++;
-                    if (n_block > MAX_BLOCK_INDEX) {
-                        pthread_rwlock_unlock(&inode->rw_lock);
-                        return (ssize_t)written;
-                    }
                 }
                 int *block_to_blocks = (int *) data_block_get(inode->i_data_block_to_data_blocks);
                 if (block_to_blocks == NULL) {
                     pthread_rwlock_unlock(&inode->rw_lock);
                     return -1;
                 }
-                block_to_blocks[n_block] = data_block_alloc();
+                block_to_blocks[n_ind_block] = data_block_alloc();
             }
             else {
                 inode->i_data_block[current_block] = data_block_alloc();
             }
         }
 
+        /* Get block to write */
         void *block;
         if (current_block >= MAX_DIRECT_BLOCK) {
             int *block_to_blocks = (int *) data_block_get(inode->i_data_block_to_data_blocks);
@@ -206,7 +198,7 @@ ssize_t tfs_write(int fhandle, void const *buffer, size_t to_write) {
                 pthread_rwlock_unlock(&inode->rw_lock);
                 return -1;
             }
-            block = data_block_get(block_to_blocks[n_block]);
+            block = data_block_get(block_to_blocks[n_ind_block]);
         }
         else {
             block = data_block_get(inode->i_data_block[current_block]);
@@ -217,7 +209,7 @@ ssize_t tfs_write(int fhandle, void const *buffer, size_t to_write) {
             return -1;
         }
 
-        if (create_new_block == 1 || inode->i_size == 0) {
+        if (create_new_block == 1) {
             create_new_block = 0;
             inode->n_data_blocks++;
         }
@@ -229,7 +221,6 @@ ssize_t tfs_write(int fhandle, void const *buffer, size_t to_write) {
         * incremented accordingly */
         file->of_offset += to_write_now;
         block_offset += to_write_now;
-        written += to_write_now;
         if (file->of_offset > inode->i_size) {
             inode->i_size = file->of_offset;
         }
@@ -256,47 +247,39 @@ ssize_t tfs_read(int fhandle, void *buffer, size_t len) {
     size_t block_offset = file->of_offset;
     size_t current_block = block_offset / BLOCK_SIZE;
     size_t remain = block_offset % BLOCK_SIZE;
-    size_t n_block = 0;
+    size_t n_ind_block = 0;
 
     /* Determine how many bytes to read */
     size_t to_read = inode->i_size - file->of_offset;
-    size_t to_read_now = 0;
-    size_t read = 0;
+    size_t to_read_now;
+    size_t read;
     if (to_read > len) {
         to_read = len;
     }
+    read = to_read;
 
+    /* Determine the block where offset is */
     block_offset = remain;
     if (remain == 0 && current_block > 0) {
         current_block--;
         block_offset = BLOCK_SIZE;
     }
     if (current_block > MAX_DIRECT_BLOCK)
-        n_block = current_block - MAX_DIRECT_BLOCK;
-
-    /*while(block_offset > BLOCK_SIZE) {
-        block_offset -= BLOCK_SIZE;
-        current_block++;
-        if(current_block > MAX_DIRECT_BLOCK) { n_block++; }
-    }*/
+        n_ind_block = current_block - MAX_DIRECT_BLOCK;
 
     while (to_read > 0) {
         /* Reached end of a block, read next block */
         if(block_offset == BLOCK_SIZE) {
             current_block++;
-            if(current_block > MAX_DIRECT_BLOCK) { n_block++; }
+            if(current_block > MAX_DIRECT_BLOCK) { n_ind_block++; }
             block_offset = 0;
         }
-        /* Need to read the rest of a block and more */
-        if(to_read + block_offset > BLOCK_SIZE) {
-            to_read_now = BLOCK_SIZE - block_offset;
-            to_read -= to_read_now;
-        }
-        /* Can read all at once */
-        else {
+
+        /* Determine how many bytes to read in current block */
+        to_read_now = BLOCK_SIZE - block_offset;
+        if (to_read_now > to_read)
             to_read_now = to_read;
-            to_read = 0;
-        }
+        to_read -= to_read_now;
 
         /* Get block to read */
         void *block;
@@ -308,7 +291,7 @@ ssize_t tfs_read(int fhandle, void *buffer, size_t len) {
                 pthread_rwlock_unlock(&file->rw_lock);
                 return -1;
             }
-            block = data_block_get(block_to_blocks[n_block]);
+            block = data_block_get(block_to_blocks[n_ind_block]);
         }
         else {
             block = data_block_get(inode->i_data_block[current_block]);
@@ -326,7 +309,6 @@ ssize_t tfs_read(int fhandle, void *buffer, size_t len) {
          * incremented accordingly */
         file->of_offset += to_read_now;
         block_offset += to_read_now;
-        read += to_read_now;
     }
     pthread_rwlock_unlock(&inode->rw_lock);
     pthread_rwlock_unlock(&file->rw_lock);
