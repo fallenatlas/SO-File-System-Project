@@ -89,7 +89,25 @@ int state_init() {
     return 0;
 }
 
-void state_destroy() { /* nothing to do */
+int state_destroy() { 
+    for (size_t i = 0; i < INODE_TABLE_SIZE; i++) {
+        if (pthread_mutex_destroy(&freeinode_ts[i].lock) != 0) {
+            return -1;
+        }
+    }
+
+    for (size_t i = 0; i < DATA_BLOCKS; i++) {
+        if (pthread_mutex_destroy(&free_blocks[i].lock) != 0) {
+            return -1;
+        }
+    }
+
+    for (size_t i = 0; i < MAX_OPEN_FILES; i++) {
+        if (pthread_mutex_destroy(&free_open_file_entries[i].lock) != 0) {
+            return -1;
+        }
+    }
+    return 0;
 }
 
 /*
@@ -248,12 +266,10 @@ int add_dir_entry(int inumber, int sub_inumber, char const *sub_name) {
         return -1;
     }
 
-    pthread_rwlock_wrlock(&inode_table[inumber].rw_lock);
     /* Locates the block containing the directory's entries */
     dir_entry_t *dir_entry =
         (dir_entry_t *)data_block_get(inode_table[inumber].i_data_block[0]);
     if (dir_entry == NULL) {
-        pthread_rwlock_unlock(&inode_table[inumber].rw_lock);
         return -1;
     }
 
@@ -263,11 +279,9 @@ int add_dir_entry(int inumber, int sub_inumber, char const *sub_name) {
             dir_entry[i].d_inumber = sub_inumber;
             strncpy(dir_entry[i].d_name, sub_name, MAX_FILE_NAME - 1);
             dir_entry[i].d_name[MAX_FILE_NAME - 1] = 0;
-            pthread_rwlock_unlock(&inode_table[inumber].rw_lock);
             return 0;
         }
     }
-    pthread_rwlock_unlock(&inode_table[inumber].rw_lock);
     return -1;
 }
 
@@ -284,12 +298,10 @@ int find_in_dir(int inumber, char const *sub_name) {
         return -1;
     }
 
-    pthread_rwlock_rdlock(&inode_table[inumber].rw_lock);
     /* Locates the block containing the directory's entries */
     dir_entry_t *dir_entry =
         (dir_entry_t *)data_block_get(inode_table[inumber].i_data_block[0]);
     if (dir_entry == NULL) {
-        pthread_rwlock_unlock(&inode_table[inumber].rw_lock);
         return -1;
     }
 
@@ -298,10 +310,8 @@ int find_in_dir(int inumber, char const *sub_name) {
     for (int i = 0; i < MAX_DIR_ENTRIES; i++)
         if ((dir_entry[i].d_inumber != -1) &&
             (strncmp(dir_entry[i].d_name, sub_name, MAX_FILE_NAME) == 0)) {
-            pthread_rwlock_unlock(&inode_table[inumber].rw_lock);
             return dir_entry[i].d_inumber;
         }
-    pthread_rwlock_unlock(&inode_table[inumber].rw_lock);
     return -1;
 }
 
@@ -365,12 +375,14 @@ void *data_block_get(int block_number) {
 int add_to_open_file_table(int inumber, size_t offset) {
     for (int i = 0; i < MAX_OPEN_FILES; i++) {
         pthread_mutex_lock(&free_open_file_entries[i].lock);
+        printf("i, alloc state: %d, %d\n", i, free_open_file_entries[i].allocation_state);
         if (free_open_file_entries[i].allocation_state == FREE) {
+            printf("here!\n");
             free_open_file_entries[i].allocation_state = TAKEN;
             pthread_mutex_unlock(&free_open_file_entries[i].lock);
             open_file_table[i].of_inumber = inumber;
             open_file_table[i].of_offset = offset;
-            pthread_rwlock_init(&open_file_table[i].rw_lock, NULL);
+            pthread_mutex_init(&open_file_table[i].lock, NULL);
             return i;
         }
         pthread_mutex_unlock(&free_open_file_entries[i].lock);
@@ -385,13 +397,14 @@ int add_to_open_file_table(int inumber, size_t offset) {
  */
 int remove_from_open_file_table(int fhandle) {
     pthread_mutex_lock(&free_open_file_entries[fhandle].lock);
+    printf("fhandle, alloc state: %d, %d\n", fhandle, free_open_file_entries[fhandle].allocation_state);
     if (!valid_file_handle(fhandle) ||
         free_open_file_entries[fhandle].allocation_state != TAKEN) {
         pthread_mutex_unlock(&free_open_file_entries[fhandle].lock);
         return -1;
     }
     free_open_file_entries[fhandle].allocation_state = FREE;
-    pthread_rwlock_destroy(&open_file_table[fhandle].rw_lock);
+    pthread_mutex_destroy(&open_file_table[fhandle].lock);
     pthread_mutex_unlock(&free_open_file_entries[fhandle].lock);
     return 0;
 }

@@ -40,7 +40,7 @@ typedef enum { FREE = 0, TAKEN = 1 } allocation_state_t;
 typedef struct {
     int of_inumber;
     size_t of_offset;
-    pthread_rwlock_t rw_lock;
+    pthread_mutex_t lock;
 } open_file_entry_t;
 
 typedef struct {
@@ -52,7 +52,7 @@ typedef struct {
 #define MAX_DIR_ENTRIES (BLOCK_SIZE / sizeof(dir_entry_t))
 
 int state_init();
-void state_destroy();
+int state_destroy();
 
 int inode_create(inode_type n_type);
 int inode_delete(int inumber);
