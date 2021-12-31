@@ -375,9 +375,7 @@ void *data_block_get(int block_number) {
 int add_to_open_file_table(int inumber, size_t offset) {
     for (int i = 0; i < MAX_OPEN_FILES; i++) {
         pthread_mutex_lock(&free_open_file_entries[i].lock);
-        printf("i, alloc state: %d, %d\n", i, free_open_file_entries[i].allocation_state);
         if (free_open_file_entries[i].allocation_state == FREE) {
-            printf("here!\n");
             free_open_file_entries[i].allocation_state = TAKEN;
             pthread_mutex_unlock(&free_open_file_entries[i].lock);
             open_file_table[i].of_inumber = inumber;
@@ -397,7 +395,6 @@ int add_to_open_file_table(int inumber, size_t offset) {
  */
 int remove_from_open_file_table(int fhandle) {
     pthread_mutex_lock(&free_open_file_entries[fhandle].lock);
-    printf("fhandle, alloc state: %d, %d\n", fhandle, free_open_file_entries[fhandle].allocation_state);
     if (!valid_file_handle(fhandle) ||
         free_open_file_entries[fhandle].allocation_state != TAKEN) {
         pthread_mutex_unlock(&free_open_file_entries[fhandle].lock);

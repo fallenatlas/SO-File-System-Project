@@ -59,6 +59,7 @@ int tfs_open(char const *name, int flags) {
     inum = tfs_lookup(name);
     if (inum >= 0) {
         pthread_rwlock_unlock(&dir_inode->rw_lock);
+        //printf("File opened: %s\n", name);
         /* The file already exists */
         inode_t *inode = inode_get(inum);
         if (inode == NULL) {
@@ -108,6 +109,7 @@ int tfs_open(char const *name, int flags) {
     } else if (flags & TFS_O_CREAT) {
         /* The file doesn't exist; the flags specify that it should be created*/
         /* Create inode */
+        //printf("File created: %s\n", name);
         inum = inode_create(T_FILE);
         if (inum == -1) {
             return -1;
