@@ -152,6 +152,7 @@ ssize_t tfs_write(int fhandle, void const *buffer, size_t to_write) {
     }
 
     pthread_rwlock_wrlock(&inode->rw_lock);
+    printf("locked\n");
     size_t written;
     size_t to_write_now;
     size_t block_offset = file->of_offset;
@@ -240,6 +241,7 @@ ssize_t tfs_write(int fhandle, void const *buffer, size_t to_write) {
 
         /* The offset associated with the file handle is
         * incremented accordingly */
+        buffer += to_write_now;
         file->of_offset += to_write_now;
         block_offset += to_write_now;
         if (file->of_offset > inode->i_size) {
@@ -248,6 +250,7 @@ ssize_t tfs_write(int fhandle, void const *buffer, size_t to_write) {
     }
 
     pthread_rwlock_unlock(&inode->rw_lock);
+    printf("unlocked\n");
     return (ssize_t)written;
 }
 
@@ -328,6 +331,7 @@ ssize_t tfs_read(int fhandle, void *buffer, size_t len) {
         memcpy(buffer, block + block_offset, to_read_now);
         /* The offset associated with the file handle is
          * incremented accordingly */
+        buffer += to_read_now;
         file->of_offset += to_read_now;
         block_offset += to_read_now;
     }
