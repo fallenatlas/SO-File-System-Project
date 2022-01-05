@@ -14,7 +14,7 @@ INCLUDES = $(addprefix -I, $(INCLUDE_DIRS))
 SOURCES  := $(wildcard */*.c)
 HEADERS  := $(wildcard */*.h)
 OBJECTS  := $(SOURCES:.c=.o)
-TARGET_EXECS := tests/test1 tests/copy_to_external_simple tests/copy_to_external_errors tests/write_10_blocks_spill tests/write_10_blocks_simple tests/write_more_than_10_blocks_simple tests/test1_thread tests/test_open_thread tests/test_write_simple_thread tests/test_read_simple tests/write_more_than_one_block_big tests/write_more_than_10_blocks_big
+TARGET_EXECS := tests/test1 tests/copy_to_external_simple tests/copy_to_external_errors tests/write_10_blocks_spill tests/write_10_blocks_simple tests/write_more_than_10_blocks_simple tests/test1_thread tests/test_open_thread tests/test_write_simple_thread tests/test_read_simple tests/test_append tests/test_same_fhandle_thread tests/test_copy_thread
 
 # VPATH is a variable used by Makefile which finds *sources* and makes them available throughout the codebase
 # vpath %.h <DIR> tells make to look for header files in <DIR>
@@ -84,10 +84,12 @@ tests/test_write_simple_thread: tests/test_write_simple_thread.o fs/operations.o
 			 cc -pthread tests/test_write_simple_thread.o fs/operations.o fs/state.o    -o tests/test_write_simple_thread
 tests/test_read_simple: tests/test_read_simple.o fs/operations.o fs/state.o
 			 cc -pthread tests/test_read_simple.o fs/operations.o fs/state.o    -o tests/test_read_simple
-tests/write_more_than_one_block_big: tests/write_more_than_one_block_big.o fs/operations.o fs/state.o
-		 	 cc -pthread tests/write_more_than_one_block_big.o fs/operations.o fs/state.o    -o tests/write_more_than_one_block_big
-tests/write_more_than_10_blocks_big: tests/write_more_than_10_blocks_big.o fs/operations.o fs/state.o
-			 cc -pthread tests/write_more_than_10_blocks_big.o fs/operations.o fs/state.o    -o tests/write_more_than_10_blocks_big
+tests/test_append: tests/test_append.o fs/operations.o fs/state.o
+			 cc -pthread tests/test_append.o fs/operations.o fs/state.o   -o tests/test_append
+tests/test_same_fhandle_thread: tests/test_same_fhandle_thread.o fs/operations.o fs/state.o
+			 cc -pthread tests/test_same_fhandle_thread.o fs/operations.o fs/state.o   -o tests/test_same_fhandle_thread
+tests/test_copy_thread: tests/test_copy_thread.o fs/operations.o fs/state.o
+			 cc -pthread tests/test_copy_thread.o fs/operations.o fs/state.o   -o tests/test_copy_thread
 
 clean:
 	rm -f $(OBJECTS) $(TARGET_EXECS)

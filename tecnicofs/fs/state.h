@@ -40,14 +40,15 @@ typedef enum { FREE = 0, TAKEN = 1 } allocation_state_t;
 typedef struct {
     int of_inumber;
     size_t of_offset;
+    int flag_mode;
     pthread_mutex_t lock;
 } open_file_entry_t;
 
-typedef struct {
+/*typedef struct {
     char allocation_state;
-    pthread_mutex_t lock;
+    pthread_rwlock_t rw_lock;
 } free_table_entry;
-
+*/
 #define MAX_BLOCK_INDEX (BLOCK_SIZE / sizeof(int))
 #define MAX_DIR_ENTRIES (BLOCK_SIZE / sizeof(dir_entry_t))
 
@@ -66,7 +67,10 @@ int data_block_alloc();
 int data_block_free(int block_number);
 void *data_block_get(int block_number);
 
-int add_to_open_file_table(int inumber, size_t offset);
+void lock_open_file_entries(int fhandle);
+void unlock_open_file_entries(int fhandle);
+
+int add_to_open_file_table(int inumber, size_t offset, int flag);
 int remove_from_open_file_table(int fhandle);
 open_file_entry_t *get_open_file_entry(int fhandle);
 

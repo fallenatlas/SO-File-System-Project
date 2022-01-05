@@ -236,7 +236,7 @@ int main() {
 
         if(i < 2) {
             buffer[i][wr[i]] = '\0';
-            assert(strcmp(buffer[i], str) == 0 || strcmp(buffer[i], "") == 0);
+            assert(strcmp(buffer[i], str) == 0 || strcmp(buffer[i], "") == 0 || strcmp(buffer[i], str2) == 0);
         }
     }
 
@@ -261,14 +261,13 @@ int main() {
 
     //Read contents of the file
     r = tfs_read(f[0], buffer[0], sizeof(buffer) - 1);
-    size_t possible_size_1 = 2*strlen(str);
-    size_t possible_size_2 = 3*strlen(str);
+    size_t possible_size_1 = strlen(str);
+    size_t possible_size_2 = 2*strlen(str);
     assert(r == possible_size_1 || r == possible_size_2);
     buffer[0][r] = '\0';
 
     //Check if its correct
-    assert(strcmp(buffer[0], "BBB!AAA!") == 0 || strcmp(buffer[0], "AAA!BBB!") == 0 || strcmp(buffer[0], "AAA!AAA!BBB!"));
-
+    assert(strcmp(buffer[0], "BBB!") == 0 || strcmp(buffer[0], "AAA!BBB!")== 0);
     assert(tfs_close(f[0]) != -1);
 
     printf("Successful test.\n");
