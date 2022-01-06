@@ -65,13 +65,13 @@ int main() {
     fhandle = tfs_open(path1, TFS_O_CREAT);
     assert(fhandle != -1);
 
+    if (pthread_create(&tid[i++], NULL, read_t, (void *)&fhandle) != 0) {
+        exit(EXIT_FAILURE);
+    }
+    if (pthread_create(&tid[i++], NULL, read_t, (void *)&fhandle) != 0) {
+        exit(EXIT_FAILURE);
+    }
     if (pthread_create(&tid[i++], NULL, close_t, (void *)&fhandle) != 0) {
-        exit(EXIT_FAILURE);
-    }
-    if (pthread_create(&tid[i++], NULL, read_t, (void *)&fhandle) != 0) {
-        exit(EXIT_FAILURE);
-    }
-    if (pthread_create(&tid[i++], NULL, read_t, (void *)&fhandle) != 0) {
         exit(EXIT_FAILURE);
     }
 

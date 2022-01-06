@@ -21,7 +21,7 @@ void *open1(void *args) {
         *exit_val = -1;
         pthread_exit((void *) exit_val);
     }
-    if (tfs_write(fhandle, _args->str, _args->to_write) != strlen(_args->str)) {
+    if (tfs_write(fhandle, _args->str, _args->to_write) != _args->to_write) {
         printf("Write failed\n");
         *exit_val = -1;
     }
@@ -44,6 +44,12 @@ int main() {
     char *str1 = "AAAAAAAAAA";
     char *str2 = "BBBBBBBBBB";
     char *str3 = "CCCCCCCCCC";
+    //char str1[1536];
+    //char str2[1536];
+    //char str3[1536];
+    //memset(str1, 'A', 1536);
+    //memset(str2, 'B', 1536);
+    //memset(str3, 'C', 1536);
 
     int fhandle;
     ssize_t size;

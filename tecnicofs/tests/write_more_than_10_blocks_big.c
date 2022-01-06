@@ -303,7 +303,7 @@ int main() {
         }
     }
     */
-    for(i = 0; i < 4; i++) {
+    for(i = 0; i < 3; i++) {
         printf("WAITING: %d\n", i);
         pthread_join(tid[i], (void **)&r[i]);
         printf("Joined\n");

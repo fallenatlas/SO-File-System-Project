@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 #define COUNT 80
-#define SIZE 2000
+#define SIZE 5200
 
 /**
    This test fills in a new file up to 20 blocks via multiple writes
@@ -28,12 +28,10 @@ int main() {
     /* Write input COUNT times into a new file */
     int fd = tfs_open(path, TFS_O_CREAT);
     assert(fd != -1);
-    assert(tfs_write(fd, input, strlen(input)) == strlen(input));
-    /*
-    for (int i = 0; i < COUNT; i++) {
-        assert(tfs_write(fd, input, SIZE) == SIZE);
+    for (int i = 0; i < 4; i++) {
+        assert(tfs_write(fd, input, strlen(input)) == strlen(input));
     }
-    */
+    
     assert(tfs_close(fd) != -1);
 
     /* Open again to check if contents are as expected */
