@@ -157,6 +157,8 @@ ssize_t tfs_write(int fhandle, void const *buffer, size_t to_write) {
     if (file->flag_mode & TFS_O_APPEND)
         file->of_offset = inode->i_size;
     else if (file->of_offset > inode->i_size){
+        unlock_open_file_entries(fhandle);
+        pthread_rwlock_unlock(&inode->rw_lock);
         return -1;
     }
 

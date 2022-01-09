@@ -17,11 +17,15 @@ static char freeinode_ts[INODE_TABLE_SIZE];
 /* Data blocks */
 static char fs_data[BLOCK_SIZE * DATA_BLOCKS];
 static char free_blocks[DATA_BLOCKS];
+/* Mutex used for protecting free_blocks table, locking it avoids multiple allocations 
+in the same block */
 pthread_mutex_t free_blocks_lock;
-/* Volatile FS state */
 
+/* Volatile FS state */
 static open_file_entry_t open_file_table[MAX_OPEN_FILES];
 static char free_open_file_entries[MAX_OPEN_FILES];
+/* Mutex used for protecting free_open_file_entries table, locking it avoids
+multiple opens and closes in the same entry */
 pthread_mutex_t free_open_file_entries_lock;
 
 

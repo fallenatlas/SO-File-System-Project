@@ -29,6 +29,9 @@ typedef struct {
     int i_data_block[MAX_DIRECT_BLOCK];
     int i_data_block_to_data_blocks;
     pthread_rwlock_t rw_lock;
+    /* rw_lock used for protecting fields of inode when multiple
+    operations may change or need to access them
+    (writing, reading, opening a file, adding a file in the directory)*/
     /* in a real FS, more fields would exist here */
 } inode_t;
 
@@ -42,6 +45,9 @@ typedef struct {
     size_t of_offset;
     int flag_mode;
     pthread_mutex_t lock;
+    /* Mutex used for protecting fields of open_file_entry_t when
+    multiple operations may change or need to access them
+    (writing, reading, opening a new entry, closing an entry)*/
 } open_file_entry_t;
 
 /*typedef struct {
