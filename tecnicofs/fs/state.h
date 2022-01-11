@@ -28,10 +28,6 @@ typedef struct {
     int n_data_blocks;
     int i_data_block[MAX_DIRECT_BLOCK];
     int i_data_block_to_data_blocks;
-    pthread_rwlock_t rw_lock;
-    /* rw_lock used for protecting fields of inode when multiple
-    operations may change or need to access them
-    (writing, reading, opening a file, adding a file in the directory)*/
     /* in a real FS, more fields would exist here */
 } inode_t;
 
@@ -64,6 +60,9 @@ int state_destroy();
 int inode_create(inode_type n_type);
 int inode_delete(int inumber);
 inode_t *inode_get(int inumber);
+
+void lock_inode(int inumber, char mode);
+void unlock_inode(int inumber);
 
 int clear_dir_entry(int inumber, int sub_inumber);
 int add_dir_entry(int inumber, int sub_inumber, char const *sub_name);
