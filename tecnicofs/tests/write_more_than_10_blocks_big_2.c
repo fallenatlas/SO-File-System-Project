@@ -121,16 +121,6 @@ ssize_t read_big(void *void_args) {
     return exit_val;
 }
 
-/*
-void *read_all(void *void_args) {
-    ssize_t *exit_val = (ssize_t *) malloc(sizeof(int));
-    
-    *exit_val = read_big(void_args);
-
-    return (void *) exit_val;
-}
-*/
-
 void *write_big_thread(void *void_args) {
     int *exit_val = (int *) malloc(sizeof(int));
     *exit_val = 0;
@@ -165,33 +155,6 @@ void *open_write_read_big(void *void_args) {
 
     pthread_exit((void *) exit_val);
 }
-
-/*
-void *open1(void *args) {
-    int fhandle;
-    int *exit_val = (int *) malloc(sizeof(int));
-    *exit_val = 0;
-    tfs_args *_args = (tfs_args *) args;
-    fhandle = tfs_open(_args->path, _args->flag);
-    if (fhandle == -1) {
-        *exit_val = -1;
-        pthread_exit((void *) exit_val);
-    }
-    printf("to_write: %ld\n", _args->to_write);
-    for (int i = 0; i < _args->count; i++) {
-        printf("going to write: %c\n", _args->str[0]);
-        if (tfs_write(fhandle, _args->str, _args->to_write) != _args->to_write) {
-            printf("Write failed\n");
-            *exit_val = -1;
-        }   
-    }
-    if (tfs_close(fhandle) == -1) {
-        *exit_val = -1;
-        pthread_exit((void *) exit_val);
-    }
-    pthread_exit((void *) exit_val);
-}
-*/
 
 void prepare_args(tfs_args *args, const char *path, int flag, int count, char *str, size_t to_read, size_t to_write) {
     args->path = path;
@@ -242,15 +205,39 @@ int main() {
     prepare_args(_args_3, path1, TFS_O_CREAT, COUNT_2, str1, SIZE, sizeof(str1));
     prepare_args(_args_4, path2, TFS_O_CREAT, COUNT_1, str3, SIZE, sizeof(str3));
     if (pthread_create(&tid[i++], NULL, open_write_read_big, (void *)_args_1) != 0) {
+        free(_args_1);
+        free(_args_2);
+        free(_args_3);
+        free(_args_4);
+        free(_args_5);
+        free(_args_6);
         exit(EXIT_FAILURE);
     }
     if (pthread_create(&tid[i++], NULL, open_write_read_big, (void *)_args_2) != 0) {
+        free(_args_1);
+        free(_args_2);
+        free(_args_3);
+        free(_args_4);
+        free(_args_5);
+        free(_args_6);
         exit(EXIT_FAILURE);
     }
     if (pthread_create(&tid[i++], NULL, open_write_read_big, (void *)_args_3) != 0) {
+        free(_args_1);
+        free(_args_2);
+        free(_args_3);
+        free(_args_4);
+        free(_args_5);
+        free(_args_6);
         exit(EXIT_FAILURE);
     }
     if (pthread_create(&tid[i++], NULL, open_write_read_big, (void *)_args_4) != 0) {
+        free(_args_1);
+        free(_args_2);
+        free(_args_3);
+        free(_args_4);
+        free(_args_5);
+        free(_args_6);
         exit(EXIT_FAILURE);
     }
     
@@ -274,21 +261,57 @@ int main() {
 
     i = 0;
     if (pthread_create(&tid[i++], NULL, write_big_thread, (void *)_args_1) != 0) {
+        free(_args_1);
+        free(_args_2);
+        free(_args_3);
+        free(_args_4);
+        free(_args_5);
+        free(_args_6);
         exit(EXIT_FAILURE);
     }
     if (pthread_create(&tid[i++], NULL, write_big_thread, (void *)_args_2) != 0) {
+        free(_args_1);
+        free(_args_2);
+        free(_args_3);
+        free(_args_4);
+        free(_args_5);
+        free(_args_6);
         exit(EXIT_FAILURE);
     }
     if (pthread_create(&tid[i++], NULL, read_big_thread, (void *)_args_3) != 0) {
+        free(_args_1);
+        free(_args_2);
+        free(_args_3);
+        free(_args_4);
+        free(_args_5);
+        free(_args_6);
         exit(EXIT_FAILURE);
     }
     if (pthread_create(&tid[i++], NULL, read_big_thread, (void *)_args_4) != 0) {
+        free(_args_1);
+        free(_args_2);
+        free(_args_3);
+        free(_args_4);
+        free(_args_5);
+        free(_args_6);
         exit(EXIT_FAILURE);
     }
     if (pthread_create(&tid[i++], NULL, write_read_big, (void *)_args_5) != 0) {
+        free(_args_1);
+        free(_args_2);
+        free(_args_3);
+        free(_args_4);
+        free(_args_5);
+        free(_args_6);
         exit(EXIT_FAILURE);
     }
     if (pthread_create(&tid[i++], NULL, open_write_read_big, (void *)_args_6) != 0) {
+        free(_args_1);
+        free(_args_2);
+        free(_args_3);
+        free(_args_4);
+        free(_args_5);
+        free(_args_6);
         exit(EXIT_FAILURE);
     }
 
@@ -308,15 +331,39 @@ int main() {
 
     i = 0;
     if (pthread_create(&tid[i++], NULL, read_big_thread, (void *)_args_1) != 0) {
+        free(_args_1);
+        free(_args_2);
+        free(_args_3);
+        free(_args_4);
+        free(_args_5);
+        free(_args_6);
         exit(EXIT_FAILURE);
     }
     if (pthread_create(&tid[i++], NULL, read_big_thread, (void *)_args_2) != 0) {
+        free(_args_1);
+        free(_args_2);
+        free(_args_3);
+        free(_args_4);
+        free(_args_5);
+        free(_args_6);
         exit(EXIT_FAILURE);
     }
     if (pthread_create(&tid[i++], NULL, read_big_thread, (void *)_args_3) != 0) {
+        free(_args_1);
+        free(_args_2);
+        free(_args_3);
+        free(_args_4);
+        free(_args_5);
+        free(_args_6);
         exit(EXIT_FAILURE);
     }
     if (pthread_create(&tid[i++], NULL, read_big_thread, (void *)_args_4) != 0) {
+        free(_args_1);
+        free(_args_2);
+        free(_args_3);
+        free(_args_4);
+        free(_args_5);
+        free(_args_6);
         exit(EXIT_FAILURE);
     }
 
@@ -327,19 +374,15 @@ int main() {
         assert(*r[i] == expected[i]);
     }
 
-    /*
-    fhandle = tfs_open(path1, 0);
-    assert(fhandle != -1);
+    tfs_destroy();
 
-    size = tfs_read(fhandle, buffer, sizeof(buffer)-1);
-    assert(size == sizeof(str1)*4);
+    free(_args_1);
+    free(_args_2);
+    free(_args_3);
+    free(_args_4);
+    free(_args_5);
+    free(_args_6);
 
-    buffer[size] = '\0';
-    printf("Read: %s\n", buffer);
-    //assert(strcmp(buffer, "AAAAAAAAAA") == 0 || strcmp(buffer, "BBBBBBBBBB") == 0 || strcmp(buffer, "CCCCCCCCCC") == 0);
-
-    assert(tfs_close(fhandle) != -1);
-    */
     printf("Successful test.\n");
 
     return 0;

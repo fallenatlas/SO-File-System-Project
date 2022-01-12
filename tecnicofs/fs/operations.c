@@ -307,6 +307,11 @@ ssize_t tfs_read(int fhandle, void *buffer, size_t len) {
     size_t n_ind_block = 0;
 
     /* Determine how many bytes to read */
+    if (inode->i_size < file->of_offset) {
+        unlock_open_file_entries(fhandle);
+        unlock_inode(file->of_inumber);
+        return -1;
+    }
     size_t to_read = inode->i_size - file->of_offset;
     size_t to_read_now;
     size_t read;

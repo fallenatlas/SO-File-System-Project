@@ -113,12 +113,24 @@ int state_init() {
     return 0;
 }
 
-int state_destroy() { 
+int state_destroy() {
+    for (int i = 0; i < INODE_TABLE_SIZE; i++) {
+        /*
+        if (inode_delete(i) != 0) {
+            return -1;
+        }
+        */
+        if (pthread_rwlock_destroy(&inode_lock_table[i]) != 0) {
+            return -1;
+        }
+    }
+    /*
     for (size_t i = 0; i < INODE_TABLE_SIZE; i++) {
         if (pthread_rwlock_destroy(&inode_lock_table[i]) != 0) {
             return -1;
         }
     }
+    */
     if (pthread_mutex_destroy(&free_blocks_lock) != 0) {
         return -1;
     }
@@ -249,6 +261,12 @@ inode_t *inode_get(int inumber) {
     return &inode_table[inumber];
 }
 
+/*
+ * Locks the inode identified by the inumber in the given mode.
+ * Input:
+ *  - inumber: identifier of the i-node
+ *  - mode: 'w' for write or 'r' for read
+ */
 void lock_inode(int inumber, char mode) {
     if (mode == 'w') {
         pthread_rwlock_wrlock(&inode_lock_table[inumber]);
@@ -258,6 +276,11 @@ void lock_inode(int inumber, char mode) {
     }
 }
 
+/*
+ * Unlocks the inode identified by the inumber.
+ * Input:
+ *  - inumber: identifier of the i-node
+ */
 void unlock_inode(int inumber) {
     pthread_rwlock_unlock(&inode_lock_table[inumber]);
 }
@@ -284,8 +307,6 @@ int add_dir_entry(int inumber, int sub_inumber, char const *sub_name) {
         return -1;
     }
 
-    pthread_rwlock_wrlock(&dir_entry_lock);
-
     /* Locates the block containing the directory's entries */
     dir_entry_t *dir_entry =
         (dir_entry_t *)data_block_get(inode_table[inumber].i_data_block[0]);
@@ -294,6 +315,7 @@ int add_dir_entry(int inumber, int sub_inumber, char const *sub_name) {
         return -1;
     }
 
+    pthread_rwlock_wrlock(&dir_entry_lock);
     /* Finds and fills the first empty entry */
     for (size_t i = 0; i < MAX_DIR_ENTRIES; i++) {
         if (dir_entry[i].d_inumber == -1) {
@@ -321,8 +343,6 @@ int find_in_dir(int inumber, char const *sub_name) {
         return -1;
     }
 
-    pthread_rwlock_rdlock(&dir_entry_lock);
-
     /* Locates the block containing the directory's entries */
     dir_entry_t *dir_entry =
         (dir_entry_t *)data_block_get(inode_table[inumber].i_data_block[0]);
@@ -331,6 +351,7 @@ int find_in_dir(int inumber, char const *sub_name) {
         return -1;
     }
 
+    pthread_rwlock_rdlock(&dir_entry_lock);
     /* Iterates over the directory entries looking for one that has the target
      * name */
     for (int i = 0; i < MAX_DIR_ENTRIES; i++)
@@ -348,12 +369,12 @@ int find_in_dir(int inumber, char const *sub_name) {
  * Returns: block index if successful, -1 otherwise
  */
 int data_block_alloc() {
+    pthread_mutex_lock(&free_blocks_lock);
     for (int i = 0; i < DATA_BLOCKS; i++) {
         if (i * (int) sizeof(allocation_state_t) % BLOCK_SIZE == 0) {
             insert_delay(); // simulate storage access delay to free_blocks
         }
 
-        pthread_mutex_lock(&free_blocks_lock);
         if (free_blocks[i] == FREE) {
             free_blocks[i] = TAKEN;
             pthread_mutex_unlock(&free_blocks_lock);
@@ -375,7 +396,9 @@ int data_block_free(int block_number) {
     }
 
     insert_delay(); // simulate storage access delay to free_blocks
+    pthread_mutex_lock(&free_blocks_lock);
     free_blocks[block_number] = FREE;
+    pthread_mutex_unlock(&free_blocks_lock);
     return 0;
 }
 
