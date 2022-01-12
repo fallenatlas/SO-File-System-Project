@@ -7,8 +7,6 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
-#define MAX_DIRECT_BLOCK 10
-
 /*
  * Directory entry
  */

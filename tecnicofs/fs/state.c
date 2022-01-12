@@ -31,7 +31,8 @@ static char free_open_file_entries[MAX_OPEN_FILES];
 /* Mutex used for protecting free_open_file_entries table, locking it avoids
 multiple opens and closes in the same entry */
 pthread_mutex_t free_open_file_entries_lock;
-
+/* rw_lock used for protecting directory when trying to add a directory entry
+or lookup for one */
 pthread_rwlock_t dir_entry_lock;
 
 
@@ -311,7 +312,6 @@ int add_dir_entry(int inumber, int sub_inumber, char const *sub_name) {
     dir_entry_t *dir_entry =
         (dir_entry_t *)data_block_get(inode_table[inumber].i_data_block[0]);
     if (dir_entry == NULL) {
-        pthread_rwlock_unlock(&dir_entry_lock);
         return -1;
     }
 
@@ -347,7 +347,6 @@ int find_in_dir(int inumber, char const *sub_name) {
     dir_entry_t *dir_entry =
         (dir_entry_t *)data_block_get(inode_table[inumber].i_data_block[0]);
     if (dir_entry == NULL) {
-        pthread_rwlock_unlock(&dir_entry_lock);
         return -1;
     }
 
@@ -380,8 +379,8 @@ int data_block_alloc() {
             pthread_mutex_unlock(&free_blocks_lock);
             return i;
         }
-        pthread_mutex_unlock(&free_blocks_lock);
     }
+    pthread_mutex_unlock(&free_blocks_lock);
     return -1;
 }
 
@@ -434,11 +433,16 @@ int add_to_open_file_table(int inumber, size_t offset, int flag) {
     pthread_mutex_lock(&free_open_file_entries_lock);
     for (int i = 0; i < MAX_OPEN_FILES; i++) {
         if (free_open_file_entries[i] == FREE) {
+            /* Protect open file entry while initializing fields to prevent
+            writings or readings while changing fields (cases where different threads
+            have used the same fhandle) */
+            pthread_mutex_lock(&open_file_table[i].lock);
             free_open_file_entries[i] = TAKEN;
             pthread_mutex_unlock(&free_open_file_entries_lock);
             open_file_table[i].of_inumber = inumber;
             open_file_table[i].of_offset = offset;
             open_file_table[i].flag_mode = flag;
+            pthread_mutex_unlock(&open_file_table[i].lock);
             return i;
         }
     }
