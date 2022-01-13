@@ -21,14 +21,13 @@ TARGET_EXECS := tests/test1 tests/copy_to_external_simple tests/copy_to_external
 vpath # clears VPATH
 vpath %.h $(INCLUDE_DIRS)
 
-CFLAGS = -std=c11 -D_POSIX_C_SOURCE=200809L -pthread
+CFLAGS = -std=c11 -D_POSIX_C_SOURCE=200809L -pthread -fsanitize=thread
 CFLAGS += $(INCLUDES)
-
 # Warnings
 CFLAGS += -fdiagnostics-color=always -Wall -Werror -Wextra -Wcast-align -Wconversion -Wfloat-equal -Wformat=2 -Wnull-dereference -Wshadow -Wsign-conversion -Wswitch-default -Wswitch-enum -Wundef -Wunreachable-code -Wunused
 # Warning suppressions
 CFLAGS += -Wno-sign-compare
-
+LDFLAGS = -ltsan -fsanitize=thread -pthread
 # optional debug symbols: run make DEBUG=no to deactivate them
 ifneq ($(strip $(DEBUG)), no)
   CFLAGS += -g
@@ -65,41 +64,41 @@ fmt: $(SOURCES) $(HEADERS)
 # make uses a set of default rules, one of which compiles C binaries
 # the CC, LD, CFLAGS and LDFLAGS are used in this rule
 tests/test1: tests/test1.o fs/operations.o fs/state.o
-			 cc -pthread tests/test1.o fs/operations.o fs/state.o   -o tests/test1
+			 cc $(LDFLAGS) tests/test1.o fs/operations.o fs/state.o   -o tests/test1
 tests/copy_to_external_errors: tests/copy_to_external_errors.o fs/operations.o fs/state.o
-		     cc -pthread tests/copy_to_external_errors.o fs/operations.o fs/state.o   -o tests/copy_to_external_errors
+		     cc $(LDFLAGS) tests/copy_to_external_errors.o fs/operations.o fs/state.o   -o tests/copy_to_external_errors
 tests/copy_to_external_simple: tests/copy_to_external_simple.o fs/operations.o fs/state.o
-			 cc -pthread tests/copy_to_external_simple.o fs/operations.o fs/state.o   -o tests/copy_to_external_simple
+			 cc $(LDFLAGS) tests/copy_to_external_simple.o fs/operations.o fs/state.o   -o tests/copy_to_external_simple
 tests/write_10_blocks_spill: tests/write_10_blocks_spill.o fs/operations.o fs/state.o
-			 cc -pthread tests/write_10_blocks_spill.o fs/operations.o fs/state.o   -o tests/write_10_blocks_spill
+			 cc $(LDFLAGS) tests/write_10_blocks_spill.o fs/operations.o fs/state.o   -o tests/write_10_blocks_spill
 tests/write_10_blocks_simple: tests/write_10_blocks_simple.o fs/operations.o fs/state.o
-			 cc -pthread tests/write_10_blocks_simple.o fs/operations.o fs/state.o   -o tests/write_10_blocks_simple
+			 cc $(LDFLAGS) tests/write_10_blocks_simple.o fs/operations.o fs/state.o   -o tests/write_10_blocks_simple
 tests/write_more_than_10_blocks_simple: tests/write_more_than_10_blocks_simple.o fs/operations.o fs/state.o
-			 cc -pthread tests/write_more_than_10_blocks_simple.o fs/operations.o fs/state.o   -o tests/write_more_than_10_blocks_simple
+			 cc $(LDFLAGS) tests/write_more_than_10_blocks_simple.o fs/operations.o fs/state.o   -o tests/write_more_than_10_blocks_simple
 tests/write_more_than_one_block_big: tests/write_more_than_one_block_big.o fs/operations.o fs/state.o
-			 cc -pthread tests/write_more_than_one_block_big.o fs/operations.o fs/state.o    -o tests/write_more_than_one_block_big
+			 cc $(LDFLAGS) tests/write_more_than_one_block_big.o fs/operations.o fs/state.o    -o tests/write_more_than_one_block_big
 tests/test1_thread: tests/test1_thread.o fs/operations.o fs/state.o
-			 cc -pthread tests/test1_thread.o fs/operations.o fs/state.o    -o tests/test1_thread
+			 cc $(LDFLAGS) tests/test1_thread.o fs/operations.o fs/state.o    -o tests/test1_thread
 tests/test_open_thread: tests/test_open_thread.o fs/operations.o fs/state.o
-			 cc -pthread tests/test_open_thread.o fs/operations.o fs/state.o    -o tests/test_open_thread
+			 cc $(LDFLAGS) tests/test_open_thread.o fs/operations.o fs/state.o    -o tests/test_open_thread
 tests/test_write_simple_thread: tests/test_write_simple_thread.o fs/operations.o fs/state.o
-			 cc -pthread tests/test_write_simple_thread.o fs/operations.o fs/state.o    -o tests/test_write_simple_thread
+			 cc $(LDFLAGS) tests/test_write_simple_thread.o fs/operations.o fs/state.o    -o tests/test_write_simple_thread
 tests/test_read_simple: tests/test_read_simple.o fs/operations.o fs/state.o
-			 cc -pthread tests/test_read_simple.o fs/operations.o fs/state.o    -o tests/test_read_simple
+			 cc $(LDFLAGS) tests/test_read_simple.o fs/operations.o fs/state.o    -o tests/test_read_simple
 tests/test_append: tests/test_append.o fs/operations.o fs/state.o
-			 cc -pthread tests/test_append.o fs/operations.o fs/state.o   -o tests/test_append
+			 cc $(LDFLAGS) tests/test_append.o fs/operations.o fs/state.o   -o tests/test_append
 tests/test_same_fhandle_thread: tests/test_same_fhandle_thread.o fs/operations.o fs/state.o
-			 cc -pthread tests/test_same_fhandle_thread.o fs/operations.o fs/state.o   -o tests/test_same_fhandle_thread
+			 cc $(LDFLAGS) tests/test_same_fhandle_thread.o fs/operations.o fs/state.o   -o tests/test_same_fhandle_thread
 tests/test_copy_thread: tests/test_copy_thread.o fs/operations.o fs/state.o
-			 cc -pthread tests/test_copy_thread.o fs/operations.o fs/state.o   -o tests/test_copy_thread
+			 cc $(LDFLAGS) tests/test_copy_thread.o fs/operations.o fs/state.o   -o tests/test_copy_thread
 tests/write_more_than_10_blocks_big_2: tests/write_more_than_10_blocks_big_2.o fs/operations.o fs/state.o
-			 cc -pthread tests/write_more_than_10_blocks_big_2.o fs/operations.o fs/state.o    -o tests/write_more_than_10_blocks_big_2
+			 cc $(LDFLAGS) tests/write_more_than_10_blocks_big_2.o fs/operations.o fs/state.o    -o tests/write_more_than_10_blocks_big_2
 tests/test1_MT: tests/test1_MT.o fs/operations.o fs/state.o
-			 cc -pthread tests/test1_MT.o fs/operations.o fs/state.o    -o tests/test1_MT
+			 cc $(LDFLAGS) tests/test1_MT.o fs/operations.o fs/state.o    -o tests/test1_MT
 tests/write_more_than_10_blocks_big_no_leaks: tests/write_more_than_10_blocks_big_no_leaks.o fs/operations.o fs/state.o
-			 cc -pthread tests/write_more_than_10_blocks_big_no_leaks.o fs/operations.o fs/state.o    -o tests/write_more_than_10_blocks_big_no_leaks
+			 cc $(LDFLAGS) tests/write_more_than_10_blocks_big_no_leaks.o fs/operations.o fs/state.o    -o tests/write_more_than_10_blocks_big_no_leaks
 tests/test_write_simple_thread_with_truncate: tests/test_write_simple_thread_with_truncate.o fs/operations.o fs/state.o
-			 cc -pthread tests/test_write_simple_thread_with_truncate.o fs/operations.o fs/state.o    -o tests/test_write_simple_thread_with_truncate
+			 cc $(LDFLAGS) tests/test_write_simple_thread_with_truncate.o fs/operations.o fs/state.o    -o tests/test_write_simple_thread_with_truncate
 
 
 
