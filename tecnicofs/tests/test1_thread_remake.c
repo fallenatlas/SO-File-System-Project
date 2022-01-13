@@ -229,12 +229,16 @@ int main() {
     }
 
     //Create threads to close both entries of the file.
-    if (pthread_create (&tid[0], NULL, tfs_close_thread, (void*)close_args_1) != 0) {
-        exit(EXIT_FAILURE);
-    }
-
-    if (pthread_create (&tid[1], NULL, tfs_close_thread, (void*)close_args_2) != 0) {
-        exit(EXIT_FAILURE);
+    for (i = 0; i < 2; i++) {
+        if (pthread_create (&tid[i], NULL, tfs_close_thread, (void*)close_args[i]) != 0) {
+            free(open_args[0]);
+            free(open_args[1]);
+            free(write_args[0]);
+            free(write_args[1]);
+            free(close_args[0]);
+            free(close_args[1]);
+            exit(EXIT_FAILURE);
+        }
     }
 
     //Check if both closes were succeful.

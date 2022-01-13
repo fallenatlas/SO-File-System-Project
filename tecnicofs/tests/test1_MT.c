@@ -40,8 +40,6 @@ void *test1(void *void_args) {
     and what was read. They might be different from each other depending
     on the order of execution */
     printf("wrote: %s, read: %s\n", args->str, buffer);
-    /* Could read what the other thread wrote? */
-    assert(strcmp(buffer, args->str) == 0);
 
     assert(tfs_close(f) != -1);
 
