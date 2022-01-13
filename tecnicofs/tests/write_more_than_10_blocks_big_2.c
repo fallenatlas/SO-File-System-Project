@@ -17,6 +17,7 @@ typedef struct {
     char *str;
     size_t to_read;
     size_t to_write;
+    int exit_val;
 } tfs_args;
 
 void *write_read_big(void *void_args) {
@@ -197,9 +198,9 @@ int main() {
     tfs_args *_args_5 = (tfs_args*) malloc(sizeof(tfs_args));
     tfs_args *_args_6 = (tfs_args*) malloc(sizeof(tfs_args));
 
-    // Phase 1:
-    // Create 4 thread to write and then read the file from the beggining.
-    // 3 threads will execute on one file and 1 will execute on another file.
+    /* Phase 1:
+       Create 4 thread to write and then read the file from the beggining.
+       3 threads will execute on one file and 1 will execute on another file.*/
     prepare_args(_args_1, path1, TFS_O_CREAT, COUNT_2, str1, SIZE, sizeof(str1));
     prepare_args(_args_2, path1, TFS_O_CREAT, COUNT_2, str1, SIZE, sizeof(str1));
     prepare_args(_args_3, path1, TFS_O_CREAT, COUNT_2, str1, SIZE, sizeof(str1));
@@ -248,10 +249,10 @@ int main() {
     }
 
 
-    // Phase 2:
-    // 2 threads will write to /f1 while another reads.
-    // 1 thread will read from /f2 while another writes and then reads from the same file.
-    // 1 thread will write and then read /DFile from the beggining.
+    /* Phase 2:
+       2 threads will write to /f1 while another reads.
+       1 thread will read from /f2 while another writes and then reads from the same file.
+       1 thread will write and then read /DFile from the beggining.*/
     prepare_args(_args_1, path2, TFS_O_APPEND, COUNT_2, str1, SIZE, sizeof(str1));
     prepare_args(_args_2, path2, TFS_O_CREAT, COUNT_2, str2, SIZE, sizeof(str2));
     prepare_args(_args_3, path2, TFS_O_CREAT, COUNT_2, str3, SIZE, sizeof(str3));
@@ -322,8 +323,8 @@ int main() {
     }
 
 
-    // Phase 3:
-    // Read the contents of the 3 files that were created and modified.
+    /* Phase 3:
+       Read the contents of the 3 files that were created and modified.*/
     prepare_args(_args_1, path1, TFS_O_CREAT, 1, "", COUNT_0, 0);
     prepare_args(_args_2, path2, TFS_O_CREAT, 1, "", COUNT_0, 0);
     prepare_args(_args_3, path2, TFS_O_CREAT, 1, "", COUNT_0, 0);

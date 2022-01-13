@@ -9,7 +9,11 @@ typedef struct {
     int exit_val;
 } tfs_args;
 
-
+/* Operations in different file handles but same file.
+Two threads try to open the same file with TFS_O_CREATE flag (only one of them should create it
+the other one should just open the created file), then try to write in the file overwriting its contents.
+The files are opened again with offset 0 in order to read the file, since the contents were overwritten
+the reading should be of str or str2, depending on the order of execution */
 void *test1(void *void_args) {
     tfs_args *args = (tfs_args *)void_args;
 
@@ -32,15 +36,20 @@ void *test1(void *void_args) {
     assert(r == strlen(args->str));
 
     buffer[r] = '\0';
+    /* Printf shows string that was written in this thread
+    and what was read. They might be different from each other depending
+    on the order of execution */
+    printf("wrote: %s, read: %s\n", args->str, buffer);
+    /* Could read what the other thread wrote? */
     assert(strcmp(buffer, args->str) == 0);
 
     assert(tfs_close(f) != -1);
 
-    pthread_exit(NULL);
+    return NULL;
 }
 
 int main() {
-    pthread_t tid[3];
+    pthread_t tid[2];
 
     int i;
     char *str = "AAAAAAAAA!";
