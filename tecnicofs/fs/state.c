@@ -115,23 +115,11 @@ int state_init() {
 }
 
 int state_destroy() {
-    for (int i = 0; i < INODE_TABLE_SIZE; i++) {
-        /*
-        if (inode_delete(i) != 0) {
-            return -1;
-        }
-        */
-        if (pthread_rwlock_destroy(&inode_lock_table[i]) != 0) {
-            return -1;
-        }
-    }
-    /*
     for (size_t i = 0; i < INODE_TABLE_SIZE; i++) {
         if (pthread_rwlock_destroy(&inode_lock_table[i]) != 0) {
             return -1;
         }
     }
-    */
     if (pthread_mutex_destroy(&free_blocks_lock) != 0) {
         return -1;
     }
@@ -433,16 +421,11 @@ int add_to_open_file_table(int inumber, size_t offset, int flag) {
     pthread_mutex_lock(&free_open_file_entries_lock);
     for (int i = 0; i < MAX_OPEN_FILES; i++) {
         if (free_open_file_entries[i] == FREE) {
-            /* Protect open file entry while initializing fields to prevent
-            writings or readings while changing fields (cases where different threads
-            have used the same fhandle) */
-            pthread_mutex_lock(&open_file_table[i].lock);
             free_open_file_entries[i] = TAKEN;
             pthread_mutex_unlock(&free_open_file_entries_lock);
             open_file_table[i].of_inumber = inumber;
             open_file_table[i].of_offset = offset;
             open_file_table[i].flag_mode = flag;
-            pthread_mutex_unlock(&open_file_table[i].lock);
             return i;
         }
     }
@@ -475,6 +458,7 @@ int remove_from_open_file_table(int fhandle) {
 open_file_entry_t *get_open_file_entry(int fhandle) {
     pthread_mutex_lock(&free_open_file_entries_lock);
     if (!valid_file_handle(fhandle) || free_open_file_entries[fhandle] != TAKEN) {
+        pthread_mutex_unlock(&free_open_file_entries_lock);
         return NULL;
     }
     pthread_mutex_unlock(&free_open_file_entries_lock);

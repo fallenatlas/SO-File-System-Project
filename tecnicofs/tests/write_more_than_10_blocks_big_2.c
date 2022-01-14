@@ -185,6 +185,7 @@ int main() {
     memset(str2, 'B', SIZE);
     memset(str3, 'C', SIZE);
     memset(str4, 'D', SIZE);
+    char to_read[22000];
 
     //int fhandle;
     //ssize_t size;
@@ -368,12 +369,25 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
+    // Expected size of the files.
     int expected[4] = {6144, 21504, 21504, 15360};
     for(i = 0; i < 4; i++) {
         pthread_join(tid[i], (void **)&r[i]);
         printf("r[%d]: %d\n", i, *r[i]);
         assert(*r[i] == expected[i]);
     }
+
+    assert(tfs_copy_to_external_fs(path2, "external_file.txt") != -1);
+
+    FILE *fp = fopen("external_file.txt", "r");
+
+    assert(fp != NULL);
+
+    assert(fread(to_read, sizeof(char), 22000, fp) == 21504);
+
+    assert(fclose(fp) != -1);
+
+    unlink("external_file.txt");
 
     tfs_destroy();
 

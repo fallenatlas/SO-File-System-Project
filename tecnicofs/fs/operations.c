@@ -389,18 +389,18 @@ int tfs_copy_to_external_fs(char const *source_path, char const *dest_path) {
     if (dest_file == NULL)
         return -1;
 
-    size_t read_now;
+    ssize_t read_now;
     size_t read = 0;
     char buffer[BLOCK_SIZE];
 
     while (inode->i_size > read) {
-        read_now = (size_t) tfs_read(fhandle, buffer, sizeof(buffer));
+        read_now = tfs_read(fhandle, buffer, BLOCK_SIZE);
         if (read_now == -1) {
             return -1;
         }
         else {
-            read += read_now;
-            fwrite(buffer, sizeof(char), read_now, dest_file);
+            read += (size_t) read_now;
+            fwrite(buffer, sizeof(char), (size_t) read_now, dest_file);
             if (ferror(dest_file) != 0)
                 return -1;
         }

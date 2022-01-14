@@ -14,20 +14,20 @@ INCLUDES = $(addprefix -I, $(INCLUDE_DIRS))
 SOURCES  := $(wildcard */*.c)
 HEADERS  := $(wildcard */*.h)
 OBJECTS  := $(SOURCES:.c=.o)
-TARGET_EXECS := tests/test1 tests/copy_to_external_simple tests/copy_to_external_errors tests/write_10_blocks_spill tests/write_10_blocks_simple tests/write_more_than_10_blocks_simple tests/write_more_than_one_block_big tests/test1_thread tests/test_open_thread tests/test_write_simple_thread tests/test_read_simple tests/test_append tests/test_same_fhandle_thread tests/test_copy_thread tests/write_more_than_10_blocks_big_2 tests/test1_MT tests/write_more_than_10_blocks_big_no_leaks tests/test_mutex_2 tests/test_write_on_the_same_file tests/test_write_simple_thread_with_truncate
+TARGET_EXECS := tests/test1 tests/copy_to_external_simple tests/copy_to_external_errors tests/write_10_blocks_spill tests/write_10_blocks_simple tests/write_more_than_10_blocks_simple tests/write_more_than_one_block_big tests/test1_thread tests/test_open_thread tests/test_write_simple_thread tests/test_read_simple tests/test_append tests/test_same_fhandle_thread tests/test_copy_thread tests/write_more_than_10_blocks_big_2 tests/test1_MT tests/write_more_than_10_blocks_big_no_leaks tests/test_write_simple_thread_with_truncate
 
 # VPATH is a variable used by Makefile which finds *sources* and makes them available throughout the codebase
 # vpath %.h <DIR> tells make to look for header files in <DIR>
 vpath # clears VPATH
 vpath %.h $(INCLUDE_DIRS)
 
-CFLAGS = -std=c11 -D_POSIX_C_SOURCE=200809L -pthread -fsanitize=thread
+CFLAGS = -std=c11 -D_POSIX_C_SOURCE=200809L -pthread
 CFLAGS += $(INCLUDES)
 # Warnings
 CFLAGS += -fdiagnostics-color=always -Wall -Werror -Wextra -Wcast-align -Wconversion -Wfloat-equal -Wformat=2 -Wnull-dereference -Wshadow -Wsign-conversion -Wswitch-default -Wswitch-enum -Wundef -Wunreachable-code -Wunused
 # Warning suppressions
 CFLAGS += -Wno-sign-compare
-LDFLAGS = -ltsan -fsanitize=thread -pthread
+LDFLAGS = -pthread
 # optional debug symbols: run make DEBUG=no to deactivate them
 ifneq ($(strip $(DEBUG)), no)
   CFLAGS += -g
